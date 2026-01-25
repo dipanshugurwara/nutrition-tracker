@@ -2,6 +2,8 @@
 
 A MyFitnessPal-like calorie and protein tracking app powered by AI. Simply describe what you ate, and the app uses OpenAI to estimate calories and protein automatically.
 
+> Last updated: Test push to verify GitHub connection
+
 ## Features
 
 - **AI-Powered Nutrition Estimation**: Describe your meals in natural language, and the app estimates calories and protein using OpenAI
