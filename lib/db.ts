@@ -2,7 +2,11 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'nutrition.db');
+// For Vercel/serverless: use /tmp, for local: use data directory
+const dbPath = process.env.DATABASE_PATH || 
+  (process.env.VERCEL 
+    ? '/tmp/nutrition.db' 
+    : path.join(process.cwd(), 'data', 'nutrition.db'));
 
 // Ensure data directory exists
 const dbDir = path.dirname(dbPath);
