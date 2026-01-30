@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react';
 import Calendar from '@/components/Calendar';
 
 interface DailySummary {
@@ -13,11 +14,17 @@ interface DailySummary {
 }
 
 export default function CalendarPage() {
+  const { data: session, status } = useSession();
   const [summaries, setSummaries] = useState<DailySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
+    if (status === 'unauthenticated') {
+      window.location.href = '/login';
+      return;
+    }
+    if (status !== 'authenticated') return;
     const fetchSummaries = async () => {
       try {
         setLoading(true);
@@ -28,10 +35,14 @@ export default function CalendarPage() {
         const startDate = new Date(year, month, 1).toISOString().split('T')[0];
         const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
-        const response = await fetch(`/api/targets?startDate=${startDate}&endDate=${endDate}`);
+        const response = await fetch(`/api/targets?startDate=${startDate}&endDate=${endDate}`, { credentials: 'include' });
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
         if (response.ok) {
           const data = await response.json();
-          setSummaries(data);
+          setSummaries(Array.isArray(data) ? data : []);
         }
       } catch (error) {
         console.error('Error fetching summaries:', error);
@@ -41,8 +52,9 @@ export default function CalendarPage() {
     };
 
     fetchSummaries();
-  }, [currentMonth]);
+  }, [currentMonth, status]);
 
+  if (status === 'loading' || status === 'unauthenticated') return null;
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -57,13 +69,14 @@ export default function CalendarPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-gray-900">Nutrition Tracker</h1>
-            <div className="flex gap-4">
-              <Link
-                href="/"
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium"
-              >
+            <div className="flex items-center gap-4">
+              <Link href="/" className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
                 Dashboard
               </Link>
+              {session?.user?.email && <span className="text-sm text-gray-600">{session.user.email}</span>}
+              <button onClick={() => signOut({ callbackUrl: '/login' })} className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
+                Sign out
+              </button>
             </div>
           </div>
         </div>

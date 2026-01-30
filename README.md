@@ -2,17 +2,24 @@
 
 A MyFitnessPal-like calorie and protein tracking app powered by AI. Simply describe what you ate, and the app uses OpenAI to estimate calories and protein automatically.
 
-> Last updated: Test push to verify GitHub connection
-
 ## Features
 
-- **AI-Powered Nutrition Estimation**: Describe your meals in natural language, and the app estimates calories and protein using OpenAI
-- **Dual Metric Tracking**: Track both calories and protein against daily targets
-- **Daily Dashboard**: View your progress with visual progress bars and summaries
-- **Calendar View**: See your nutrition history at a glance with color-coded days
-- **Daily Detail Pages**: View and manage entries for any specific day
-- **Target Management**: Set and adjust daily calorie and protein targets
-- **Mobile-Friendly**: Responsive design that works on all devices
+- **Accounts & auth**: Sign up and sign in. Each user has their own entries and targets.
+- **Personalized targets**: On sign-up, enter weight (kg), height (cm), age, gender, and activity level. The app estimates your daily **calorie** (TDEE) and **protein** targets using standard formulas (Mifflin–St Jeor + activity multipliers).
+- **AI-powered nutrition**: Describe what you ate in plain language; OpenAI estimates calories and protein.
+- **Dual metric tracking**: Track calories and protein vs your targets with progress bars.
+- **Daily dashboard**: View today’s totals, add entries, and see recent meals.
+- **Calendar view**: Monthly calendar with color-coded days (on track / over).
+- **Daily detail**: Per-day entries, edit/delete, and adjust daily targets.
+- **Mobile-friendly**: Responsive layout.
+- **PWA**: Install on your phone as an app (Add to Home Screen on iOS and Android).
+
+## Install as app (PWA)
+
+- **Android**: Open the app in Chrome → menu (⋮) → “Add to Home screen” or “Install app.”
+- **iOS**: Open in Safari → Share → “Add to Home Screen.”
+
+The app will open in its own window without the browser UI.
 
 ## Getting Started
 
@@ -33,11 +40,12 @@ A MyFitnessPal-like calorie and protein tracking app powered by AI. Simply descr
    ```bash
    cp .env.example .env
    ```
-   
-   Then edit `.env` and add your OpenAI API key:
+   Edit `.env` and set:
    ```
    OPENAI_API_KEY=your_openai_api_key_here
+   AUTH_SECRET=your_auth_secret   # run: npx auth secret
    ```
+   For local dev, `AUTH_URL` can stay as `http://localhost:3000` (see `.env.example`).
 
 4. Run the development server:
    ```bash
@@ -52,11 +60,11 @@ The app uses SQLite for data storage. The database file will be automatically cr
 
 ## Usage
 
-1. **Add Food Entries**: On the dashboard, describe what you ate (e.g., "Grilled chicken breast with rice and vegetables") and click "Estimate Calories & Protein"
-2. **Review Estimates**: The AI will provide calorie and protein estimates. You can adjust them manually if needed
-3. **Track Progress**: View your daily progress on the dashboard with visual indicators
-4. **Calendar View**: Navigate to the Calendar page to see your nutrition history
-5. **Set Targets**: Click on any day to view details and adjust your daily calorie and protein targets
+1. **Sign up**: Create an account at `/signup`. Enter email, password, weight (kg), height (cm), age, gender, and activity level. The app computes your suggested daily calories and protein.
+2. **Sign in**: Log in at `/login`.
+3. **Add food**: On the dashboard, describe what you ate (e.g. “Grilled chicken breast with rice and vegetables”) and click “Estimate Calories & Protein”. Adjust if needed, then save.
+4. **Track progress**: Use the dashboard and calendar to monitor intake vs your targets.
+5. **Adjust targets**: Open any day from the calendar to edit that day’s calorie and protein targets.
 
 ## Tech Stack
 
@@ -64,6 +72,7 @@ The app uses SQLite for data storage. The database file will be automatically cr
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
 - **SQLite (better-sqlite3)** - Database
+- **NextAuth (v5)** - Auth (credentials + JWT)
 - **OpenAI API** - Nutrition estimation
 
 ## Deployment
@@ -72,7 +81,7 @@ The app uses SQLite for data storage. The database file will be automatically cr
 
 1. Push your code to GitHub
 2. Import your repository on [Vercel](https://vercel.com)
-3. Add your `OPENAI_API_KEY` in the environment variables section
+3. Set environment variables: `OPENAI_API_KEY`, `AUTH_SECRET` (run `npx auth secret`), and `AUTH_URL` (e.g. `https://your-app.vercel.app`).
 4. Deploy!
 
 The app will work on any device with a browser once deployed.

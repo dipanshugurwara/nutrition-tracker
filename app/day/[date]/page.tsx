@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react';
 import DailySummary from '@/components/DailySummary';
 import EntryList from '@/components/EntryList';
 import { formatDateDisplay } from '@/lib/utils';
@@ -26,7 +27,7 @@ interface Summary {
 
 export default function DayDetailPage() {
   const params = useParams();
-  const router = useRouter();
+  const { data: session, status } = useSession();
   const date = params.date as string;
   
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -37,36 +38,43 @@ export default function DayDetailPage() {
   const [targetProtein, setTargetProtein] = useState(150);
 
   useEffect(() => {
-    fetchData();
-  }, [date]);
+    if (status === 'unauthenticated') {
+      window.location.href = '/login';
+      return;
+    }
+    if (status === 'authenticated') fetchData();
+  }, [date, status]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch target
-      const targetRes = await fetch(`/api/targets?date=${date}`);
+      const targetRes = await fetch(`/api/targets?date=${date}`, { credentials: 'include' });
+      if (targetRes.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
       const target = await targetRes.json();
-      setTargetCalories(target.target_calories);
-      setTargetProtein(target.target_protein);
-      
-      // Fetch entries
-      const entriesRes = await fetch(`/api/entries?date=${date}`);
+      setTargetCalories(target.target_calories ?? 2000);
+      setTargetProtein(target.target_protein ?? 150);
+
+      const entriesRes = await fetch(`/api/entries?date=${date}`, { credentials: 'include' });
+      if (entriesRes.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
       const dayEntries = await entriesRes.json();
-      
-      // Calculate totals
-      const total_calories = dayEntries.reduce((sum: number, e: Entry) => sum + e.estimated_calories, 0);
-      const total_protein = dayEntries.reduce((sum: number, e: Entry) => sum + e.estimated_protein, 0);
-      
+      const list = Array.isArray(dayEntries) ? dayEntries : [];
+      const total_calories = list.reduce((sum: number, e: Entry) => sum + e.estimated_calories, 0);
+      const total_protein = list.reduce((sum: number, e: Entry) => sum + e.estimated_protein, 0);
+
       setSummary({
         date,
         total_calories,
         total_protein,
-        target_calories: target.target_calories,
-        target_protein: target.target_protein,
+        target_calories: target.target_calories ?? 2000,
+        target_protein: target.target_protein ?? 150,
       });
-      
-      setEntries(dayEntries);
+      setEntries(list);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -80,6 +88,7 @@ export default function DayDetailPage() {
     try {
       const response = await fetch(`/api/entries?id=${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       
       if (response.ok) {
@@ -98,6 +107,7 @@ export default function DayDetailPage() {
       const response = await fetch('/api/targets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           date,
           target_calories: targetCalories,
@@ -116,6 +126,7 @@ export default function DayDetailPage() {
     }
   };
 
+  if (status === 'loading' || status === 'unauthenticated') return null;
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -130,19 +141,17 @@ export default function DayDetailPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-gray-900">Nutrition Tracker</h1>
-            <div className="flex gap-4">
-              <Link
-                href="/"
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium"
-              >
+            <div className="flex items-center gap-4">
+              <Link href="/" className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
                 Dashboard
               </Link>
-              <Link
-                href="/calendar"
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium"
-              >
+              <Link href="/calendar" className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
                 Calendar
               </Link>
+              {session?.user?.email && <span className="text-sm text-gray-600">{session.user.email}</span>}
+              <button onClick={() => signOut({ callbackUrl: '/login' })} className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
+                Sign out
+              </button>
             </div>
           </div>
         </div>
@@ -210,7 +219,7 @@ export default function DayDetailPage() {
                     type="number"
                     value={targetCalories}
                     onChange={(e) => setTargetCalories(Number(e.target.value))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                   />
                 </div>
                 <div>
@@ -222,7 +231,7 @@ export default function DayDetailPage() {
                     step="0.1"
                     value={targetProtein}
                     onChange={(e) => setTargetProtein(Number(e.target.value))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                   />
                 </div>
               </div>

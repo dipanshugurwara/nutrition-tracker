@@ -28,6 +28,7 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description }),
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -54,6 +55,7 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
       const response = await fetch('/api/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           date,
           food_description: description,
@@ -99,7 +101,7 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="e.g., Grilled chicken breast with rice and vegetables"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900 bg-white placeholder:text-gray-500"
           rows={3}
           disabled={loading}
         />
@@ -131,7 +133,7 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
                     type="number"
                     value={estimated.calories}
                     onChange={(e) => setEstimated({ ...estimated, calories: Math.max(0, Number(e.target.value)) })}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                   />
                   <button
                     onClick={() => handleAdjust('calories', -10)}
@@ -155,7 +157,7 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
                     step="0.1"
                     value={estimated.protein}
                     onChange={(e) => setEstimated({ ...estimated, protein: Math.max(0, Number(e.target.value)) })}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                   />
                   <button
                     onClick={() => handleAdjust('protein', -5)}
