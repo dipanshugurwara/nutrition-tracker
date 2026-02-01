@@ -6,7 +6,6 @@ import DailySummary from '@/components/DailySummary';
 import FoodEntryForm from '@/components/FoodEntryForm';
 import EntryList from '@/components/EntryList';
 import Link from 'next/link';
-import { signOut, useSession } from 'next-auth/react';
 
 interface Entry {
   id: number;
@@ -26,7 +25,6 @@ interface Summary {
 }
 
 export default function Home() {
-  const { data: session, status } = useSession();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,18 +33,9 @@ export default function Home() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const summaryRes = await fetch(`/api/targets?date=${today}`, { credentials: 'include' });
-      if (summaryRes.status === 401) {
-        window.location.href = '/login';
-        return;
-      }
+      const summaryRes = await fetch(`/api/targets?date=${today}`);
       const target = await summaryRes.json();
-
-      const entriesRes = await fetch(`/api/entries?date=${today}`, { credentials: 'include' });
-      if (entriesRes.status === 401) {
-        window.location.href = '/login';
-        return;
-      }
+      const entriesRes = await fetch(`/api/entries?date=${today}`);
       const dayEntries = await entriesRes.json();
 
       const total_calories = (Array.isArray(dayEntries) ? dayEntries : []).reduce((sum: number, e: Entry) => sum + e.estimated_calories, 0);
@@ -68,12 +57,8 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      window.location.href = '/login';
-      return;
-    }
-    if (status === 'authenticated') fetchData();
-  }, [status]);
+    fetchData();
+  }, []);
 
   const handleEntryAdded = () => {
     fetchData();
@@ -82,11 +67,7 @@ export default function Home() {
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this entry?')) return;
     try {
-      const response = await fetch(`/api/entries?id=${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      
+      const response = await fetch(`/api/entries?id=${id}`, { method: 'DELETE' });
       if (response.ok) {
         const data = await response.json();
         setSummary(data.summary);
@@ -98,14 +79,13 @@ export default function Home() {
     }
   };
 
-  if (status === 'loading' || (status === 'authenticated' && loading)) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-600">Loading...</div>
       </div>
     );
   }
-  if (status === 'unauthenticated') return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -113,27 +93,15 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-gray-900">Nutrition Tracker</h1>
-            <div className="flex items-center gap-4">
-              <Link href="/calendar" className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
-                Calendar
-              </Link>
-              {session?.user?.email && (
-                <span className="text-sm text-gray-600">{session.user.email}</span>
-              )}
-              <button
-                onClick={() => signOut({ callbackUrl: '/login' })}
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium"
-              >
-                Sign out
-              </button>
-            </div>
+            <Link href="/calendar" className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
+              Calendar
+            </Link>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          {/* Daily Summary */}
           {summary && (
             <DailySummary
               totalCalories={summary.total_calories}
@@ -142,11 +110,7 @@ export default function Home() {
               targetProtein={summary.target_protein}
             />
           )}
-
-          {/* Food Entry Form */}
           <FoodEntryForm onEntryAdded={handleEntryAdded} date={today} />
-
-          {/* Recent Entries */}
           <EntryList entries={entries} onDelete={handleDelete} />
         </div>
       </main>

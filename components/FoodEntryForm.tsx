@@ -9,13 +9,22 @@ interface FoodEntryFormProps {
 
 export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps) {
   const [description, setDescription] = useState('');
+  const [grams, setGrams] = useState<string>('');
+  const [cookedRaw, setCookedRaw] = useState<'cooked' | 'raw'>('cooked');
   const [loading, setLoading] = useState(false);
   const [estimated, setEstimated] = useState<{ calories: number; protein: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const buildFullDescription = () => {
+    const food = description.trim();
+    const g = grams.trim();
+    if (!g) return food;
+    return `${food}, ${g}g ${cookedRaw}`;
+  };
+
   const handleEstimate = async () => {
     if (!description.trim()) {
-      setError('Please enter a food description');
+      setError('Please enter what you ate');
       return;
     }
 
@@ -23,12 +32,17 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
     setError(null);
     setEstimated(null);
 
+    const fullDescription = buildFullDescription();
+
     try {
       const response = await fetch('/api/estimate-nutrition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description }),
-        credentials: 'include',
+        body: JSON.stringify({
+          description: fullDescription,
+          grams: grams ? Number(grams) : undefined,
+          cookedRaw: grams ? cookedRaw : undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -55,10 +69,9 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
       const response = await fetch('/api/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           date,
-          food_description: description,
+          food_description: buildFullDescription(),
           estimated_calories: estimated.calories,
           estimated_protein: estimated.protein,
         }),
@@ -71,6 +84,7 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
 
       // Reset form
       setDescription('');
+      setGrams('');
       setEstimated(null);
       onEntryAdded();
     } catch (err: any) {
@@ -90,7 +104,10 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-      <h2 className="text-2xl font-bold text-gray-800">Add Food Entry</h2>
+      <h2 className="text-2xl font-bold text-gray-800">Log What You Ate</h2>
+      <p className="text-gray-600 text-sm -mt-2">
+        Enter the food and amount in grams. The AI will estimate calories and protein based on your portion.
+      </p>
       
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
@@ -100,11 +117,47 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g., Grilled chicken breast with rice and vegetables"
+          placeholder="e.g., Grilled chicken breast, Brown rice with vegetables, Oatmeal with banana"
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900 bg-white placeholder:text-gray-500"
           rows={3}
           disabled={loading}
         />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="grams" className="block text-sm font-medium text-gray-700 mb-2">
+            Amount (grams)
+          </label>
+          <input
+            id="grams"
+            type="number"
+            min="1"
+            step="1"
+            value={grams}
+            onChange={(e) => setGrams(e.target.value)}
+            placeholder="e.g., 200"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white placeholder:text-gray-500"
+            disabled={loading}
+          />
+          <p className="text-xs text-gray-500 mt-1">Weight on your scale (weigh cooked or raw)</p>
+        </div>
+        <div>
+          <label htmlFor="cookedRaw" className="block text-sm font-medium text-gray-700 mb-2">
+            Weight is for
+          </label>
+          <select
+            id="cookedRaw"
+            value={cookedRaw}
+            onChange={(e) => setCookedRaw(e.target.value as 'cooked' | 'raw')}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+            disabled={loading}
+          >
+            <option value="cooked">Cooked weight</option>
+            <option value="raw">Raw weight</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">Most foods shrink when cooked</p>
+        </div>
       </div>
 
       {error && (
@@ -184,7 +237,7 @@ export default function FoodEntryForm({ onEntryAdded, date }: FoodEntryFormProps
               }}
               className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
             >
-              Cancel
+              Change
             </button>
             <button
               onClick={handleSave}

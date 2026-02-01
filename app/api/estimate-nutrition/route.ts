@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { description } = await request.json();
+    const { description, grams, cookedRaw } = await request.json();
 
     if (!description || typeof description !== 'string') {
       return NextResponse.json(
@@ -23,19 +23,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = `You are a nutrition expert. Estimate the calories and protein content for the following food description. 
-    
-Food description: "${description}"
+    const hasGrams = typeof grams === 'number' && grams > 0;
+    const gramInstruction = hasGrams
+      ? `IMPORTANT: The user specified ${grams}g (${cookedRaw} weight). Use standard nutrition data (per 100g) and calculate calories and protein for exactly ${grams}g of ${cookedRaw} food. Account for typical ${cookedRaw === 'cooked' ? 'cooked' : 'raw'} nutritional density.`
+      : 'The user did not specify a gram amount. Estimate based on a typical reasonable serving size for the described food(s).';
 
-Provide your response in JSON format with the following structure:
+    const prompt = `You are a nutrition expert. Estimate the calories and protein content for this food entry.
+
+Food: "${description}"
+
+${gramInstruction}
+
+Provide your response in JSON format:
 {
   "calories": <number>,
   "protein": <number in grams>,
   "breakdown": "<brief explanation of your estimation>"
 }
 
-Be accurate and realistic. If the description is vague, make a reasonable estimate based on typical serving sizes. 
-If multiple items are mentioned, estimate the total for all items combined.
+Be accurate and use standard nutrition databases (e.g., USDA). If multiple items are mentioned, estimate the total for all items combined.
+When grams are given, scale from per-100g values accordingly.
 
 Only respond with valid JSON, no additional text.`;
 

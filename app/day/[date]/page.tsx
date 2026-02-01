@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { signOut, useSession } from 'next-auth/react';
 import DailySummary from '@/components/DailySummary';
 import EntryList from '@/components/EntryList';
 import { formatDateDisplay } from '@/lib/utils';
@@ -27,9 +26,7 @@ interface Summary {
 
 export default function DayDetailPage() {
   const params = useParams();
-  const { data: session, status } = useSession();
   const date = params.date as string;
-  
   const [summary, setSummary] = useState<Summary | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,31 +34,15 @@ export default function DayDetailPage() {
   const [targetCalories, setTargetCalories] = useState(2000);
   const [targetProtein, setTargetProtein] = useState(150);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      window.location.href = '/login';
-      return;
-    }
-    if (status === 'authenticated') fetchData();
-  }, [date, status]);
-
   const fetchData = async () => {
     try {
       setLoading(true);
-      const targetRes = await fetch(`/api/targets?date=${date}`, { credentials: 'include' });
-      if (targetRes.status === 401) {
-        window.location.href = '/login';
-        return;
-      }
+      const targetRes = await fetch(`/api/targets?date=${date}`);
       const target = await targetRes.json();
       setTargetCalories(target.target_calories ?? 2000);
       setTargetProtein(target.target_protein ?? 150);
 
-      const entriesRes = await fetch(`/api/entries?date=${date}`, { credentials: 'include' });
-      if (entriesRes.status === 401) {
-        window.location.href = '/login';
-        return;
-      }
+      const entriesRes = await fetch(`/api/entries?date=${date}`);
       const dayEntries = await entriesRes.json();
       const list = Array.isArray(dayEntries) ? dayEntries : [];
       const total_calories = list.reduce((sum: number, e: Entry) => sum + e.estimated_calories, 0);
@@ -82,15 +63,14 @@ export default function DayDetailPage() {
     }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, [date]);
+
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this entry?')) return;
-    
     try {
-      const response = await fetch(`/api/entries?id=${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      
+      const response = await fetch(`/api/entries?id=${id}`, { method: 'DELETE' });
       if (response.ok) {
         const data = await response.json();
         setSummary(data.summary);
@@ -107,14 +87,12 @@ export default function DayDetailPage() {
       const response = await fetch('/api/targets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           date,
           target_calories: targetCalories,
           target_protein: targetProtein,
         }),
       });
-
       if (response.ok) {
         const data = await response.json();
         setSummary(data.summary);
@@ -126,7 +104,6 @@ export default function DayDetailPage() {
     }
   };
 
-  if (status === 'loading' || status === 'unauthenticated') return null;
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -141,17 +118,13 @@ export default function DayDetailPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-gray-900">Nutrition Tracker</h1>
-            <div className="flex items-center gap-4">
+            <div className="flex gap-4">
               <Link href="/" className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
                 Dashboard
               </Link>
               <Link href="/calendar" className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
                 Calendar
               </Link>
-              {session?.user?.email && <span className="text-sm text-gray-600">{session.user.email}</span>}
-              <button onClick={() => signOut({ callbackUrl: '/login' })} className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium">
-                Sign out
-              </button>
             </div>
           </div>
         </div>
@@ -159,14 +132,10 @@ export default function DayDetailPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          {/* Date Header */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              {formatDateDisplay(date)}
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-800">{formatDateDisplay(date)}</h2>
           </div>
 
-          {/* Daily Summary */}
           {summary && (
             <DailySummary
               totalCalories={summary.total_calories}
@@ -176,7 +145,6 @@ export default function DayDetailPage() {
             />
           )}
 
-          {/* Target Settings */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Daily Targets</h3>
@@ -212,9 +180,7 @@ export default function DayDetailPage() {
             {editingTarget ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Target Calories
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Calories</label>
                   <input
                     type="number"
                     value={targetCalories}
@@ -223,9 +189,7 @@ export default function DayDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Target Protein (g)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Protein (g)</label>
                   <input
                     type="number"
                     step="0.1"
@@ -249,7 +213,6 @@ export default function DayDetailPage() {
             )}
           </div>
 
-          {/* Entries List */}
           <EntryList entries={entries} onDelete={handleDelete} />
         </div>
       </main>
